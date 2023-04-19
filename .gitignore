@@ -1,0 +1,9 @@
+.Rhistory
+.Rprofile
+*.fst
+*.htm
+*.json
+packrat/
+renv/
+*.Rproj
+.Rproj.user/
