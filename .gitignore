@@ -7,3 +7,4 @@ packrat/
 renv/
 *.Rproj
 .Rproj.user/
+.positai

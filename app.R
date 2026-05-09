@@ -5,8 +5,10 @@ library(magrittr)
 library(fst)
 library(withr)
 library(DT)
+library(tidyr)
+library(ggplot2)
 
-asx_index <- fst::read_fst("AXJO.fst",as.data.table = T)
+asx_index <- fst::read_fst("AXJO.fst", as.data.table = T)
   
 calc_ratio <- function(p, d, a1) {
   a1c = copy(a1[date < d])
@@ -114,13 +116,14 @@ server <- function(input, output) {
    
    output$distPlot <- renderPlot({
      bb = target_price_dt()
-     # browser()
      ylim=c(min(bb$targetprice, bb$pricenow), max(bb$targetprice, bb$pricenow))
-     plot(bb[, .(date,targetprice)],type='l',col="blue", ylim = c(20,100))
-     lines(bb[, .(date, pricenow)],type='l',col="black")
-     legend("bottomright",lty=1,
-            c("Long term trend", "VAS Historical Price (with Imputation pre-2009)"),
-            col=c("blue","black"))
+     
+     
+     bb %>% 
+       dplyr::select(date, targetprice, pricenow) %>% 
+       tidyr::pivot_longer(!date) %>% 
+       ggplot2::ggplot(aes(x=date, y=value, color=name)) +
+       ggplot2::geom_line()
    })
 }
 

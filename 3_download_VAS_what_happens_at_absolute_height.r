@@ -1,3 +1,6 @@
+# Conclusion:
+# this method is sound as it would have shown that GFC was over valued!
+
 library(dplyr)
 library(magrittr)
 
@@ -26,11 +29,19 @@ b2 = b1 %>%
   filter(date < min(a1$date)) %>% 
   select(-price) %>% 
   rename(close = VAS.AX.Close) %>% 
-  dplyr::bind_rows(select(a1, date,  close = VAS.AX.Close)) |> 
-  filter(!is.na(close))
+  dplyr::bind_rows(select(a1, date,  close = VAS.AX.Close))
+
+
+max_date = b2 |> 
+  filter(year(date)<2010) |> 
+  filter(close == max(close)) |> 
+  pull(date)
+  
 
 b3 = b2 %>% 
-  mutate(id = 1)
+  mutate(id = 1) |> 
+  filter(date <= max_date)
+
 
 b4  = merge(b3, b3, by = "id", allow.cartesian = TRUE) %>% 
   filter(date.x < date.y)
@@ -48,13 +59,16 @@ b6 = b5 %>%
 
 b7 = b2 %>% 
   mutate(inc = (1+b6)^(as.integer(date - date[1])/365.25)) %>% 
-  mutate(expected = close[1]*inc) 
-
+  mutate(expected = close[1]*inc)
+  
+b7f = b7 |> 
+  filter(date <= max_date)
 
 
 # add in percentile in title
-m = glm(close~expected, data = b7) 
+m = glm(close~expected, data = b7f) 
 summary(m)
+
 
 m.std.err = broom::tidy(m)$std.error[2]
 
@@ -79,8 +93,7 @@ b8 |>
   View()
 
 
-
-covid_pct_quantile = mean(sort(b8$pct) < 0.3000662)
+covid_pct_quantile = mean(sort(b8$pct) < 0.3000662) |> 
 covid_pct_quantile
 
 gfc_pct_quantile = mean(sort(b8$pct) < 0.2444259149)
@@ -89,7 +102,7 @@ gfc_pct_quantile
 
 
 # what's the deviation from close lik -------------------------------------
-#plot(density(b8$pct))
+plot(density(b8$pct))
 
 
 last_pct = b8 |> last(1) |> pull(pct)
@@ -99,37 +112,38 @@ last_pct_quantile
 
 plot(b7$date, b7$close, type="l", col="blue", 
      main = glue::glue("Actual close vs Expected: %tile today={round(last_pct_quantile*100,0)}% gfc={(gfc_pct_quantile*100) |> round(0)}%; covid={(covid_pct_quantile*100) |> round(0)}%"))
-#lines(b7$date, b7$expected)
-#lines(b7$date, predict(m, b7), col="red")
+lines(b7$date, b7$expected)
+lines(b7$date, predict(m, b7), col="red")
 
-# find the line that makes all values % above the line --------------------
-pulldown <- function(downby) {
-  pct_above = b8 |> 
-    summarise(mean(close > m - downby)) |> 
-    pull()
-  
-  (pct_above - target)^2
-}
-
-target=0.9
-par90=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
-
-target=0.95
-par95=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
-
-target=0.99
-par99=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
-
+# # find the line that makes all values % above the line --------------------
+# pulldown <- function(downby) {
+#   pct_above = b8 |> 
+#     summarise(mean(close > m - downby)) |> 
+#     pull
+#   
+#   
+#   (pct_above - target)^2
+# }
+# 
+# target=0.9
+# par90=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
+# 
+# target=0.95
+# par95=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
+# 
+# target=0.99
+# par99=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
+# 
 # target=0.995
 # par995=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
 # 
 # target=0.999
 # par999=optim(0, pulldown, method = "Brent", lower = 0, upper=50)$par
-
-
-lines(b7$date, predict(m, b7)-par90, col="red", lty=2)
-lines(b7$date, predict(m, b7)-par95, col="red", lty=3)
-lines(b7$date, predict(m, b7)-par99, col="red", lty=4)
+# 
+# 
+# lines(b7$date, predict(m, b7)-par90, col="red", lty=2)
+# lines(b7$date, predict(m, b7)-par95, col="red", lty=3)
+# lines(b7$date, predict(m, b7)-par99, col="red", lty=4)
 # lines(b7$date, predict(m, b7)-par995, col="red", lty=5)
 # lines(b7$date, predict(m, b7)-par999, col="red", lty=6)
 
